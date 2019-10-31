@@ -106,9 +106,10 @@ daemon_host = localhost
 use_ssl = false
 
 [BLOCKCHAIN]
-#options: bitcoin-rpc, regtest, electrum-server
+#options: bitcoin-rpc, regtest, electrum-server, bitcoin-rpc-no-history
 # for instructions on bitcoin-rpc read
 # https://github.com/chris-belcher/joinmarket/wiki/Running-JoinMarket-with-Bitcoin-Core-full-node
+# when using bitcoin-rpc-no-history remember to increase the gap limit to scan for more addresses, try -g 5000
 blockchain_source = bitcoin-rpc
 network = mainnet
 rpc_host = localhost
@@ -517,12 +518,13 @@ def get_blockchain_interface_instance(_config):
     # todo: refactor joinmarket module to get rid of loops
     # importing here is necessary to avoid import loops
     from jmclient.blockchaininterface import BitcoinCoreInterface, \
-        RegtestBitcoinCoreInterface, ElectrumWalletInterface
+        RegtestBitcoinCoreInterface, ElectrumWalletInterface, \
+        BitcoinCoreNoHistoryInterface
     from jmclient.electruminterface import ElectrumInterface
     source = _config.get("BLOCKCHAIN", "blockchain_source")
     network = get_network()
     testnet = network == 'testnet'
-    if source in ('bitcoin-rpc', 'regtest'):
+    if source in ('bitcoin-rpc', 'regtest', 'bitcoin-rpc-no-history'):
         rpc_host = _config.get("BLOCKCHAIN", "rpc_host")
         rpc_port = _config.get("BLOCKCHAIN", "rpc_port")
         rpc_user, rpc_password = get_bitcoin_rpc_credentials(_config)
@@ -531,8 +533,10 @@ def get_blockchain_interface_instance(_config):
             rpc_wallet_file)
         if source == 'bitcoin-rpc': #pragma: no cover
             bc_interface = BitcoinCoreInterface(rpc, network)
-        else:
+        elif source == 'regtest':
             bc_interface = RegtestBitcoinCoreInterface(rpc)
+        else:
+            bc_interface = BitcoinCoreNoHistoryInterface(rpc, network)
     elif source == 'electrum':
         bc_interface = ElectrumWalletInterface(testnet)
     elif source == 'electrum-server':
